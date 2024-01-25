@@ -6,7 +6,7 @@ Building a strong project portfolio involves creating detailed and well-document
 
 Repository Overview:
 
-README.md: Start with a well-written README that introduces the project, its purpose, and its main features.
+ Start with a well-written README that introduces the project, its purpose, and its main features.
 Project Title: Clearly state the name of your project.
 Description: Provide a brief overview of what the project aims to achieve.
 Technologies Used: List the technologies and programming languages you used (e.g., Python, libraries, frameworks).
