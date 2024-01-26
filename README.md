@@ -1,4 +1,4 @@
-# Infosec-transit-
+# International Public transit fare-
 
 Creating a comprehensive international transit ticketing system involves a complex set of functionalities, including user authentication, payment processing, route planning, and ticket issuance. Developing such a system from scratch requires careful consideration of security, scalability, and user experience. Below is a simplified outline of components you might consider for your transit ticketing startup source code using Python. Note that this is a high-level overview, and each section can be significantly more detailed.
 1. User Authentication:
