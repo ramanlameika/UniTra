@@ -1,0 +1,204 @@
+Implementing a user authentication system using JWT (JSON Web Tokens) in a worldwide transit fare app involves several steps. Below, I'll outline the necessary steps and provide the code for implementing user authentication with JWT using Flask, along with registration, login, and password reset functionality.
+Step 1: Install Required Libraries
+
+First, install the necessary libraries:
+
+bash
+
+pip install Flask flask-sqlalchemy flask-bcrypt flask-jwt-extended
+
+Step 2: Create the Flask App
+
+Create a file called app.py:
+
+python
+
+from flask import Flask, request, jsonify
+from flask_sqlalchemy import SQLAlchemy
+from flask_bcrypt import Bcrypt
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+import datetime
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///fares.db'
+app.config['JWT_SECRET_KEY'] = 'your_secret_key_here'
+db = SQLAlchemy(app)
+bcrypt = Bcrypt(app)
+jwt = JWTManager(app)
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password = db.Column(db.String(120), nullable=False)
+
+class TransitFare(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    city = db.Column(db.String(80), nullable=False)
+    fare = db.Column(db.Float, nullable=False)
+
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.get_json()
+    hashed_password = bcrypt.generate_password_hash(data['password']).decode('utf-8')
+    new_user = User(username=data['username'], password=hashed_password)
+    db.session.add(new_user)
+    db.session.commit()
+    return jsonify({'message': 'User registered successfully'}), 201
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    user = User.query.filter_by(username=data['username']).first()
+    if user and bcrypt.check_password_hash(user.password, data['password']):
+        access_token = create_access_token(identity=user.id, expires_delta=datetime.timedelta(days=1))
+        return jsonify({'access_token': access_token}), 200
+    else:
+        return jsonify({'message': 'Invalid credentials'}), 401
+
+@app.route('/reset-password', methods=['POST'])
+@jwt_required()
+def reset_password():
+    current_user_id = get_jwt_identity()
+    data = request.get_json()
+    user = User.query.get(current_user_id)
+    if user:
+        hashed_password = bcrypt.generate_password_hash(data['new_password']).decode('utf-8')
+        user.password = hashed_password
+        db.session.commit()
+        return jsonify({'message': 'Password reset successfully'}), 200
+    else:
+        return jsonify({'message': 'User not found'}), 404
+
+@app.route('/fare', methods=['POST'])
+@jwt_required()
+def add_fare():
+    data = request.get_json()
+    new_fare = TransitFare(city=data['city'], fare=data['fare'])
+    db.session.add(new_fare)
+    db.session.commit()
+    return jsonify({'message': 'Fare added successfully'}), 201
+
+@app.route('/fare/<city>', methods=['GET'])
+def get_fare(city):
+    fare = TransitFare.query.filter_by(city=city).first()
+    if fare:
+        return jsonify({'city': fare.city, 'fare': fare.fare})
+    else:
+        return jsonify({'message': 'City not found'}), 404
+
+if __name__ == '__main__':
+    db.create_all()
+    app.run(debug=True)
+
+Step 3: Frontend (HTML/CSS/JavaScript)
+
+Modify your index.html and script.js to include login and registration functionalities.
+HTML (index.html)
+
+html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Worldwide Transit Fare</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>Worldwide Transit Fare</h1>
+
+    <div>
+        <label for="username">Username:</label>
+        <input type="text" id="username">
+    </div>
+    <div>
+        <label for="password">Password:</label>
+        <input type="password" id="password">
+    </div>
+    <div>
+        <button onclick="register()">Register</button>
+        <button onclick="login()">Login</button>
+    </div>
+
+    <div>
+        <label for="city">City:</label>
+        <input type="text" id="city">
+        <button onclick="getFare()">Get Fare</button>
+    </div>
+    <div id="fare-result"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+
+JavaScript (script.js)
+
+javascript
+
+let token = '';
+
+async function register() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const response = await fetch('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+    });
+    const result = await response.json();
+    alert(result.message);
+}
+
+async function login() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const response = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+    });
+    const result = await response.json();
+    if (response.ok) {
+        token = result.access_token;
+        alert('Login successful');
+    } else {
+        alert(result.message);
+    }
+}
+
+async function getFare() {
+    const city = document.getElementById('city').value;
+    const response = await fetch(`/fare/${city}`);
+    const result = await response.json();
+
+    const fareResultDiv = document.getElementById('fare-result');
+    if (response.ok) {
+        fareResultDiv.textContent = `The fare in ${result.city} is $${result.fare}`;
+    } else {
+        fareResultDiv.textContent = result.message;
+    }
+}
+
+Step 4: Running the App
+
+    Start the Flask Server
+
+Run the Flask server with:
+
+bash
+
+python app.py
+
+    Serve the HTML File
+
+You can use any simple server to serve the index.html file. One easy way is to use Python's built-in HTTP server. Navigate to the directory containing your index.html and run:
+
+bash
+
+python -m http.server
+
+Now, open your web browser and navigate to http://localhost:8000 to interact with the frontend.
+
+This setup provides a basic structure for a worldwide transit fare app with user authentication. You can further extend and secure the app by adding more features and enhancing security measures.
+ChatGPT can make mistakes. Check important info.
